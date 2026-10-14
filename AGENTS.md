@@ -14,6 +14,30 @@ A tunnel that gives a local HTTP/WebSocket server a public URL. pnpm monorepo, N
 `PROTOCOL_VERSION` on any incompatible wire change; there is no backward compatibility.
 `docs/release.md` describes deploying and publishing.
 
+## Fork: custom subdomains
+
+This fork (branch `master`; `main` tracks upstream) adds custom tunnel subdomains while users keep
+running the official `npx hostc` CLI. Upstream is merged periodically, so keep upstream files as
+close to upstream as possible.
+
+- Users ask for a label with the unmodified CLI:
+  `npx -y hostc 3000 --server https://<label>.<TUNNEL_DOMAIN>` (or `HOSTC_SERVER`). The `--server`
+  host is the only channel the CLI can send a label through, so a request on that host means
+  "give me `<label>`".
+- All fork logic lives in `apps/server/src/custom.ts` (host parsing, claim/connect API,
+  `handleCustomRequest`) and `apps/server/src/custom-tunnel.ts` (`Tunnel` subclass: `claim` and the
+  connect nonce check). Put new behavior there, not in upstream files.
+- The only upstream hooks: `apps/server/src/index.ts` calls `handleCustomRequest` at the top of
+  `fetch` and re-exports `Tunnel` from `custom-tunnel.ts`; `tunnel.ts` exports `TUNNEL_KEY`. Do not
+  grow the diff in upstream files; expect merge conflicts only at those spots.
+- Fork tests are `apps/server/test/custom.test.ts`; rules and caveats are in
+  `docs/custom-subdomains.md`. `docs/protocol.md` and `PROTOCOL_VERSION` stay untouched because the
+  wire format is unchanged.
+- Labels must be DNS labels that cannot look like generated ids. On a custom host, `/api/health`,
+  `/api/tunnels` and `/api/tunnels/*` are reserved for the server. Tokens are the upstream token
+  for the synthetic id `<label>:<nonce>`, and the Durable Object checks the nonce returned in the
+  connect URL, so claiming a subdomain again invalidates tokens from earlier claims.
+
 ## How changes ship
 
 hostc is live: `hostc.dev` (site and API) and `*.hostc.app` (tunnels), used every day.

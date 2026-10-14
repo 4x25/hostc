@@ -40,7 +40,7 @@ import { errorResponse, type PageOptions, pages } from "./pages.ts";
 /** The Worker forwards authenticated connect requests to this URL. Public requests never have this host. */
 export const CONNECT_URL = "http://hostc.internal/connect";
 
-const TUNNEL_KEY = "tunnel";
+export const TUNNEL_KEY = "tunnel";
 /** Stream ids at or above this value have not been handed out yet. Reserved in blocks to avoid a write per request. */
 const STREAM_CEILING_KEY = "streamCeiling";
 const STREAM_ID_BLOCK = 1024;

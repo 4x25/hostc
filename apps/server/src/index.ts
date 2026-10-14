@@ -8,15 +8,21 @@ import {
 	TUNNEL_ID_LENGTH,
 } from "@hostc/protocol";
 
+import { handleCustomRequest } from "./custom.ts";
 import { errorResponse, pages } from "./pages.ts";
 import { signConnectToken, verifyConnectToken } from "./token.ts";
 import { CONNECT_URL } from "./tunnel.ts";
 
-export { Tunnel } from "./tunnel.ts";
+export { Tunnel } from "./custom-tunnel.ts";
 
 export default {
 	async fetch(request, env): Promise<Response> {
 		const url = new URL(request.url);
+		// [fork] Custom subdomains (see ./custom.ts). undefined means upstream routing applies.
+		const custom = await handleCustomRequest(request, env, url);
+		if (custom !== undefined) {
+			return custom;
+		}
 		const tunnelId = tunnelIdFromHost(url.host, env.TUNNEL_DOMAIN);
 		if (tunnelId !== undefined) {
 			return handleTunnelRequest(request, env, tunnelId);
