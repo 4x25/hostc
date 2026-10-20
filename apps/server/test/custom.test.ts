@@ -3,6 +3,7 @@ import { type CreateTunnelResponse, decodeOpen, FrameType, PROTOCOL_HEADER, PROT
 import { env, runDurableObjectAlarm, SELF } from "cloudflare:test";
 import { describe, expect, it } from "vitest";
 
+import { isBlockedScanAsn } from "../src/custom.ts";
 import { signConnectToken } from "../src/token.ts";
 import { connect, createTunnel, PROTOCOL, publicUrl } from "./helpers.ts";
 
@@ -171,5 +172,31 @@ describe("custom subdomains", () => {
 		expect(decodeOpen(open.payload)).toMatchObject({ method: "POST", path: "/api/tunnels" });
 		client.head(open.stream, { body: false });
 		expect((await pending).status).toBe(200);
+	});
+
+	describe("scan-source blocking", () => {
+		it("matches the observed scan networks, not normal clients", () => {
+			expect(isBlockedScanAsn(396982)).toBe(true);
+			expect(isBlockedScanAsn(48090)).toBe(true);
+			expect(isBlockedScanAsn(218785)).toBe(true);
+			expect(isBlockedScanAsn(16276)).toBe(false);
+			expect(isBlockedScanAsn(undefined)).toBe(false);
+		});
+
+		it("rejects a blocked ASN before the Durable Object", async () => {
+			const custom = await SELF.fetch("https://scanned.tunnel.test/", { cf: { asn: 396982 } });
+			expect(custom.status).toBe(403);
+			expect(await custom.text()).toBe("Forbidden");
+		});
+
+		it("still answers the custom-subdomain API for a blocked ASN", async () => {
+			const response = await SELF.fetch("https://scanned-api.tunnel.test/api/health", { cf: { asn: 396982 } });
+			expect(response.status).toBe(200);
+		});
+
+		it("leaves other networks alone", async () => {
+			const response = await SELF.fetch("https://normal-client.tunnel.test/", { cf: { asn: 16276 } });
+			expect(response.status).toBe(404);
+		});
 	});
 });

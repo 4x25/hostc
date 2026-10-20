@@ -20,6 +20,14 @@ import { CONNECT_URL } from "./tunnel.ts";
 
 const NONCE_PARAM = "nonce";
 
+/**
+ * Networks that scan every possible custom label for `.env`, credentials and other secrets.
+ * They rotate IPs and AI-crawler user agents inside these ASNs, so the ASN is the stable part.
+ * Rejecting them here keeps the requests out of the Durable Object; a WAF rule would save the
+ * Worker invocation too, but this is the only lever the Worker itself has.
+ */
+const BLOCKED_SCAN_ASNS = new Set([396982, 48090, 218785]);
+
 /** A client-chosen subdomain: a DNS label that can never collide with a generated tunnel id. */
 function isCustomLabel(label: string): boolean {
 	return !isTunnelId(label) && /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label);
@@ -85,7 +93,24 @@ export async function handleCustomRequest(request: Request, env: Env, url: URL):
 		return jsonError(404, "Not found");
 	}
 
+	if (isBlockedScanSource(request)) {
+		return forbidden();
+	}
 	return env.TUNNEL.getByName(label).fetch(request);
+}
+
+/** The scan-source check, exported so the fork tests can exercise the denylist directly. */
+export function isBlockedScanAsn(asn: number | undefined): boolean {
+	return asn !== undefined && BLOCKED_SCAN_ASNS.has(asn);
+}
+
+function isBlockedScanSource(request: Request): boolean {
+	const asn = request.cf?.asn;
+	return typeof asn === "number" && isBlockedScanAsn(asn);
+}
+
+function forbidden(): Response {
+	return new Response("Forbidden", { status: 403, headers: { "cache-control": "no-store" } });
 }
 
 /** Like `createTunnel` in `./index.ts`, for a client-chosen label. */

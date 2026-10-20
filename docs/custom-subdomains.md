@@ -49,6 +49,9 @@ therefore read as "give me `<label>`":
   tunnels are unaffected.
 - Traffic for custom subdomains needs the same wildcard DNS record and Worker route as random
   ones; no extra deployment configuration is required.
+- Requests from known scanning networks are rejected in the Worker before they reach the tunnel's
+  Durable Object. The denylist lives in `custom.ts`; tunnel creation and connect calls are not
+  affected, so a CLI on a blocked network can still manage its own tunnel.
 
 ## Caveats
 
