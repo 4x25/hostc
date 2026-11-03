@@ -9,9 +9,9 @@
 import {
 	API_TUNNELS_PATH,
 	type CreateTunnelResponse,
-	isTunnelId,
 	PROTOCOL_HEADER,
 	PROTOCOL_VERSION,
+	tunnelIdFromLabel,
 } from "@hostc/protocol";
 
 import { CLAIM_NONCE_HEADER } from "./custom-tunnel.ts";
@@ -20,9 +20,14 @@ import { CONNECT_URL } from "./tunnel.ts";
 
 const NONCE_PARAM = "nonce";
 
+/** A generated tunnel (`<id>`, possibly with an upstream prefix like `codex-`), not a custom label. */
+function isGeneratedLabel(label: string): boolean {
+	return tunnelIdFromLabel(label) !== null;
+}
+
 /** A client-chosen subdomain: a DNS label that can never collide with a generated tunnel id. */
 function isCustomLabel(label: string): boolean {
-	return !isTunnelId(label) && /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label);
+	return !isGeneratedLabel(label) && /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(label);
 }
 
 /**
@@ -42,7 +47,7 @@ export function labelFromHost(host: string, tunnelDomain: string): string | null
 		return undefined;
 	}
 	const label = candidate.slice(0, -suffix.length);
-	return isTunnelId(label) || isCustomLabel(label) ? label : null;
+	return isGeneratedLabel(label) || isCustomLabel(label) ? label : null;
 }
 
 /**
@@ -54,9 +59,10 @@ export async function handleCustomRequest(request: Request, env: Env, url: URL):
 	if (label === undefined || label === null) {
 		return undefined;
 	}
-	if (isTunnelId(label)) {
-		// Generated-id hosts keep upstream routing. A client pointed at such a label with
-		// `--server` cannot claim it, so say that instead of proxying a creation request.
+	if (isGeneratedLabel(label)) {
+		// Generated-id hosts (with or without an upstream prefix like `codex-`) keep upstream
+		// routing. A client pointed at such a label with `--server` cannot claim it, so say that
+		// instead of proxying a creation request.
 		if (request.method === "POST" && url.pathname === API_TUNNELS_PATH && request.headers.has(PROTOCOL_HEADER)) {
 			return jsonError(400, "A tunnel subdomain must not look like a generated tunnel id. Choose a different one.");
 		}

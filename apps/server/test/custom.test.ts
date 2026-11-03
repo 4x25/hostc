@@ -93,6 +93,17 @@ describe("custom subdomains", () => {
 		expect(await response.json()).toMatchObject({ error: expect.stringContaining("generated tunnel id") });
 	});
 
+	it("rejects upstream-prefixed generated tunnel labels", async () => {
+		const response = await createAt("codex-abcdefghijkm", "203.0.113.64");
+		expect(response.status).toBe(400);
+	});
+
+	it("allows a custom label that starts with an upstream prefix", async () => {
+		const tunnel = await createCustom("codex-my-app", "203.0.113.65");
+		expect(tunnel.id).toBe("codex-my-app");
+		expect(tunnel.url).toBe("https://codex-my-app.tunnel.test");
+	});
+
 	it("rejects labels that are not DNS-safe", async () => {
 		for (const label of ["-bad-", "under_score", "a.b"]) {
 			const response = await SELF.fetch(`https://${label}.tunnel.test/`);

@@ -35,8 +35,9 @@ therefore read as "give me `<label>`":
 ## Rules
 
 - `label` must be a DNS label (`a-z`, `0-9`, `-`; at most 63 characters) and must not look like a
-  generated tunnel id (12 characters from `abcdefghijkmnpqrstuvwxyz23456789`). A hostc client
-  whose `--server` names such a label gets `400`; unusable labels get upstream's not-found page.
+  generated tunnel id (12 characters from `abcdefghijkmnpqrstuvwxyz23456789`, with or without an
+  upstream prefix such as `codex-`). A hostc client whose `--server` names such a label gets `400`;
+  unusable labels get upstream's not-found page.
 - On a custom subdomain, `/api/health`, `/api/tunnels` and `/api/tunnels/*` are answered by the
   server. Any other path is forwarded to the tunnel, so an app route like `/api/tunnels-list`
   still works.

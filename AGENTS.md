@@ -34,7 +34,8 @@ close to upstream as possible.
 - Fork tests are `apps/server/test/custom.test.ts`; rules and caveats are in
   `docs/custom-subdomains.md`. `docs/protocol.md` and `PROTOCOL_VERSION` stay untouched because the
   wire format is unchanged.
-- Labels must be DNS labels that cannot look like generated ids. On a custom host, `/api/health`,
+- Labels must be DNS labels that cannot look like generated ids, including upstream-prefixed ones
+  such as `codex-`. On a custom host, `/api/health`,
   `/api/tunnels` and `/api/tunnels/*` are reserved for the server. Tokens are the upstream token
   for the synthetic id `<label>:<nonce>`, and the Durable Object checks the nonce returned in the
   connect URL, so claiming a subdomain again invalidates tokens from earlier claims.
